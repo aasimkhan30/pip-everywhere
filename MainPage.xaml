@@ -8,132 +8,108 @@
     Loaded="OnLoaded"
     mc:Ignorable="d">
 
-    <ScrollViewer>
-        <StackPanel MaxWidth="680" Padding="32,24,32,36" Spacing="20">
-            <StackPanel Spacing="6">
-                <TextBlock
-                    Style="{StaticResource TitleTextBlockStyle}"
-                    Text="Keep PiP with you" />
-                <TextBlock
-                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                    Text="Choose which browsers should carry their picture-in-picture window across all Windows virtual desktops."
-                    TextWrapping="Wrap" />
-            </StackPanel>
+    <Page.Resources>
+        <SolidColorBrush x:Key="PanelBrush" Color="#252526" />
+        <SolidColorBrush x:Key="PanelAltBrush" Color="#2D2D2D" />
+        <SolidColorBrush x:Key="PanelBorderBrush" Color="#3C3C3C" />
+        <SolidColorBrush x:Key="SubtleBorderBrush" Color="#333333" />
+        <SolidColorBrush x:Key="MutedTextBrush" Color="#9D9D9D" />
+        <SolidColorBrush x:Key="DimTextBrush" Color="#6E6E6E" />
+        <SolidColorBrush x:Key="StatusBackgroundBrush" Color="#094771" />
+        <SolidColorBrush x:Key="StatusBorderBrush" Color="#1668A6" />
+        <SolidColorBrush x:Key="StatusEnabledTextBrush" Color="#BCD6EA" />
+        <SolidColorBrush x:Key="SuccessBrush" Color="#89D185" />
+        <SolidColorBrush x:Key="DangerBackgroundBrush" Color="#3A1F1F" />
+        <SolidColorBrush x:Key="DangerTextBrush" Color="#F0A6A6" />
+    </Page.Resources>
 
+    <ScrollViewer>
+        <StackPanel MaxWidth="680" Padding="28,24,28,28" Spacing="24">
             <Border
-                Padding="18"
-                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                x:Name="StatusCard"
+                Padding="16,14"
+                HorizontalAlignment="Stretch"
+                Background="{StaticResource StatusBackgroundBrush}"
+                BorderBrush="{StaticResource StatusBorderBrush}"
                 BorderThickness="1"
-                CornerRadius="10">
-                <Grid ColumnSpacing="14">
+                CornerRadius="6">
+                <Grid HorizontalAlignment="Stretch" ColumnSpacing="12">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <FontIcon
-                        x:Name="StatusIcon"
-                        FontSize="22"
-                        Foreground="{ThemeResource SystemFillColorSuccessBrush}"
-                        Glyph="&#xE73E;" />
+                    <Border
+                        x:Name="StatusIconCircle"
+                        Width="24"
+                        Height="24"
+                        VerticalAlignment="Center"
+                        Background="{StaticResource SuccessBrush}"
+                        CornerRadius="12">
+                        <FontIcon
+                            x:Name="StatusIcon"
+                            FontSize="13"
+                            Foreground="#12291A"
+                            Glyph="&#xE73E;" />
+                    </Border>
                     <StackPanel Grid.Column="1" Spacing="2">
                         <TextBlock
                             x:Name="StatusTitle"
                             FontWeight="SemiBold"
-                            Text="Watching for picture-in-picture windows" />
+                            Foreground="White"
+                            Text="PiP Everywhere is running" />
                         <TextBlock
-                            x:Name="StatusDetail"
-                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                            Text="No PiP windows pinned in this session" />
+                            x:Name="StatusSubtitle"
+                            FontSize="12"
+                            Foreground="{StaticResource StatusEnabledTextBrush}"
+                            Text="Watching 1 browser for video" />
                     </StackPanel>
-                    <ProgressRing
+                    <ToggleSwitch
+                        x:Name="EnabledToggle"
                         Grid.Column="2"
-                        Width="20"
-                        Height="20"
-                        IsActive="True" />
+                        MinWidth="40"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        OffContent=""
+                        OnContent=""
+                        Toggled="OnEnabledToggled" />
                 </Grid>
             </Border>
 
             <StackPanel Spacing="10">
                 <TextBlock
-                    Style="{StaticResource SubtitleTextBlockStyle}"
-                    Text="Browsers" />
-
-                <Border Style="{StaticResource CardBorderStyle}">
-                    <StackPanel>
-                        <CheckBox
-                            x:Name="EdgeCheckBox"
-                            Padding="16,12"
-                            Checked="OnBrowserSelectionChanged"
-                            Content="Microsoft Edge"
-                            Tag="edge"
-                            Unchecked="OnBrowserSelectionChanged" />
-                        <Rectangle Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
-                        <CheckBox
-                            x:Name="ChromeCheckBox"
-                            Padding="16,12"
-                            Checked="OnBrowserSelectionChanged"
-                            Content="Google Chrome"
-                            Tag="chrome"
-                            Unchecked="OnBrowserSelectionChanged" />
-                        <Rectangle Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
-                        <CheckBox
-                            x:Name="FirefoxCheckBox"
-                            Padding="16,12"
-                            Checked="OnBrowserSelectionChanged"
-                            Content="Mozilla Firefox"
-                            Tag="firefox"
-                            Unchecked="OnBrowserSelectionChanged" />
-                        <Rectangle Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
-                        <CheckBox
-                            x:Name="BraveCheckBox"
-                            Padding="16,12"
-                            Checked="OnBrowserSelectionChanged"
-                            Content="Brave"
-                            Tag="brave"
-                            Unchecked="OnBrowserSelectionChanged" />
-                        <Rectangle Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
-                        <CheckBox
-                            x:Name="OperaCheckBox"
-                            Padding="16,12"
-                            Checked="OnBrowserSelectionChanged"
-                            Content="Opera"
-                            Tag="opera"
-                            Unchecked="OnBrowserSelectionChanged" />
-                        <Rectangle Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
-                        <CheckBox
-                            x:Name="VivaldiCheckBox"
-                            Padding="16,12"
-                            Checked="OnBrowserSelectionChanged"
-                            Content="Vivaldi"
-                            Tag="vivaldi"
-                            Unchecked="OnBrowserSelectionChanged" />
-                    </StackPanel>
-                </Border>
-            </StackPanel>
-
-            <StackPanel Spacing="10">
-                <TextBlock
-                    Style="{StaticResource SubtitleTextBlockStyle}"
-                    Text="Startup" />
-                <Border Style="{StaticResource CardBorderStyle}">
-                    <Grid Padding="16,12" ColumnSpacing="16">
+                    CharacterSpacing="40"
+                    FontSize="12"
+                    FontWeight="SemiBold"
+                    Foreground="{StaticResource MutedTextBrush}"
+                    Text="STARTUP" />
+                <Border
+                    x:Name="StartupCard"
+                    Padding="14,12"
+                    HorizontalAlignment="Stretch"
+                    Background="{StaticResource PanelBrush}"
+                    BorderBrush="{StaticResource PanelBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="6">
+                    <Grid HorizontalAlignment="Stretch" ColumnSpacing="16">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel Spacing="3">
-                            <TextBlock FontWeight="SemiBold" Text="Start automatically when I sign in" />
+                            <TextBlock FontWeight="Medium" Text="Start automatically when I sign in" />
                             <TextBlock
                                 x:Name="StartupDescription"
-                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                Text="Starts quietly in the notification area."
+                                FontSize="12"
+                                Foreground="{StaticResource MutedTextBrush}"
+                                Text="Launches the watcher in the background at sign-in."
                                 TextWrapping="Wrap" />
                         </StackPanel>
                         <ToggleSwitch
                             x:Name="StartupToggle"
                             Grid.Column="1"
+                            MinWidth="40"
+                            HorizontalAlignment="Right"
                             OffContent=""
                             OnContent=""
                             Toggled="OnStartupToggled" />
@@ -141,14 +117,209 @@
                 </Border>
             </StackPanel>
 
-            <InfoBar
-                IsClosable="False"
-                IsOpen="True"
-                Message="PiP Everywhere only reads window titles and process names on this PC. It does not access browser tabs, history, or page content."
-                Severity="Informational"
-                Title="Runs locally" />
+            <StackPanel Spacing="10">
+                <Grid>
+                    <TextBlock
+                        CharacterSpacing="40"
+                        FontSize="12"
+                        FontWeight="SemiBold"
+                        Foreground="{StaticResource MutedTextBrush}"
+                        Text="BROWSERS" />
+                    <TextBlock
+                        x:Name="SelectedCountText"
+                        HorizontalAlignment="Right"
+                        FontSize="12"
+                        Foreground="{StaticResource DimTextBrush}"
+                        Text="1 selected" />
+                </Grid>
+                <TextBlock
+                    FontSize="12"
+                    Foreground="{StaticResource MutedTextBrush}"
+                    Text="Choose which browsers should keep PiP visible on every desktop."
+                    TextWrapping="Wrap" />
 
-            <Grid ColumnSpacing="12">
+                <TextBox
+                    x:Name="BrowserFilter"
+                    Height="34"
+                    Padding="10,5"
+                    Background="{StaticResource PanelAltBrush}"
+                    BorderBrush="{StaticResource PanelBorderBrush}"
+                    CornerRadius="4"
+                    FontSize="12"
+                    PlaceholderText="Filter browsers"
+                    TextChanged="OnBrowserFilterChanged" />
+
+                <Border
+                    Background="{StaticResource PanelBrush}"
+                    BorderBrush="{StaticResource PanelBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="6">
+                    <StackPanel>
+                        <Grid x:Name="EdgeRow" Padding="14,9" ColumnSpacing="10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <CheckBox
+                                x:Name="EdgeCheckBox"
+                                Checked="OnBrowserSelectionChanged"
+                                Content="Microsoft Edge"
+                                Tag="edge"
+                                Unchecked="OnBrowserSelectionChanged" />
+                            <TextBlock
+                                x:Name="EdgeDetection"
+                                Grid.Column="1"
+                                VerticalAlignment="Center"
+                                FontSize="11"
+                                Foreground="{StaticResource DimTextBrush}"
+                                Text="not detected" />
+                        </Grid>
+                        <Rectangle x:Name="EdgeSeparator" Height="1" Fill="{StaticResource SubtleBorderBrush}" />
+
+                        <Grid x:Name="ChromeRow" Padding="14,9" ColumnSpacing="10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <CheckBox
+                                x:Name="ChromeCheckBox"
+                                Checked="OnBrowserSelectionChanged"
+                                Content="Google Chrome"
+                                Tag="chrome"
+                                Unchecked="OnBrowserSelectionChanged" />
+                            <TextBlock
+                                x:Name="ChromeDetection"
+                                Grid.Column="1"
+                                VerticalAlignment="Center"
+                                FontSize="11"
+                                Foreground="{StaticResource DimTextBrush}"
+                                Text="not detected" />
+                        </Grid>
+                        <Rectangle x:Name="ChromeSeparator" Height="1" Fill="{StaticResource SubtleBorderBrush}" />
+
+                        <Grid x:Name="FirefoxRow" Padding="14,9" ColumnSpacing="10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <CheckBox
+                                x:Name="FirefoxCheckBox"
+                                Checked="OnBrowserSelectionChanged"
+                                Content="Mozilla Firefox"
+                                Tag="firefox"
+                                Unchecked="OnBrowserSelectionChanged" />
+                            <TextBlock
+                                x:Name="FirefoxDetection"
+                                Grid.Column="1"
+                                VerticalAlignment="Center"
+                                FontSize="11"
+                                Foreground="{StaticResource DimTextBrush}"
+                                Text="not detected" />
+                        </Grid>
+                        <Rectangle x:Name="FirefoxSeparator" Height="1" Fill="{StaticResource SubtleBorderBrush}" />
+
+                        <Grid x:Name="BraveRow" Padding="14,9" ColumnSpacing="10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <CheckBox
+                                x:Name="BraveCheckBox"
+                                Checked="OnBrowserSelectionChanged"
+                                Content="Brave"
+                                Tag="brave"
+                                Unchecked="OnBrowserSelectionChanged" />
+                            <TextBlock
+                                x:Name="BraveDetection"
+                                Grid.Column="1"
+                                VerticalAlignment="Center"
+                                FontSize="11"
+                                Foreground="{StaticResource DimTextBrush}"
+                                Text="not detected" />
+                        </Grid>
+                        <Rectangle x:Name="BraveSeparator" Height="1" Fill="{StaticResource SubtleBorderBrush}" />
+
+                        <Grid x:Name="OperaRow" Padding="14,9" ColumnSpacing="10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <CheckBox
+                                x:Name="OperaCheckBox"
+                                Checked="OnBrowserSelectionChanged"
+                                Content="Opera"
+                                Tag="opera"
+                                Unchecked="OnBrowserSelectionChanged" />
+                            <TextBlock
+                                x:Name="OperaDetection"
+                                Grid.Column="1"
+                                VerticalAlignment="Center"
+                                FontSize="11"
+                                Foreground="{StaticResource DimTextBrush}"
+                                Text="not detected" />
+                        </Grid>
+                        <Rectangle x:Name="OperaSeparator" Height="1" Fill="{StaticResource SubtleBorderBrush}" />
+
+                        <Grid x:Name="VivaldiRow" Padding="14,9" ColumnSpacing="10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <CheckBox
+                                x:Name="VivaldiCheckBox"
+                                Checked="OnBrowserSelectionChanged"
+                                Content="Vivaldi"
+                                Tag="vivaldi"
+                                Unchecked="OnBrowserSelectionChanged" />
+                            <TextBlock
+                                x:Name="VivaldiDetection"
+                                Grid.Column="1"
+                                VerticalAlignment="Center"
+                                FontSize="11"
+                                Foreground="{StaticResource DimTextBrush}"
+                                Text="not detected" />
+                        </Grid>
+
+                        <TextBlock
+                            x:Name="NoBrowsersMessage"
+                            Padding="14"
+                            HorizontalAlignment="Center"
+                            FontSize="12"
+                            Foreground="{StaticResource DimTextBrush}"
+                            Text="No browsers match"
+                            Visibility="Collapsed" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+            <Border
+                Padding="14,12"
+                Background="{StaticResource PanelAltBrush}"
+                BorderBrush="{StaticResource SubtleBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="6">
+                <Grid ColumnSpacing="10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <FontIcon
+                        VerticalAlignment="Top"
+                        FontSize="15"
+                        Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                        Glyph="&#xE946;" />
+                    <TextBlock
+                        Grid.Column="1"
+                        FontSize="12"
+                        Foreground="{StaticResource MutedTextBrush}"
+                        TextWrapping="Wrap">
+                        <Run FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorPrimaryBrush}" Text="Runs locally. " />
+                        <Run Text="Reads window titles and process names only. Never accesses browser tabs, history, or page content." />
+                    </TextBlock>
+                </Grid>
+            </Border>
+
+            <Grid ColumnSpacing="8">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
@@ -156,10 +327,14 @@
                 </Grid.ColumnDefinitions>
                 <Button
                     Grid.Column="1"
+                    Padding="16,7"
                     Click="OnHideToTrayClicked"
                     Content="Hide to tray" />
                 <Button
                     Grid.Column="2"
+                    Padding="16,7"
+                    Background="{StaticResource DangerBackgroundBrush}"
+                    Foreground="{StaticResource DangerTextBrush}"
                     Click="OnQuitClicked"
                     Content="Quit" />
             </Grid>

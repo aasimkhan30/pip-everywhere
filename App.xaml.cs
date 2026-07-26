@@ -1,6 +1,8 @@
 using System.Drawing;
 using H.NotifyIcon;
+using H.NotifyIcon.Core;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 using Microsoft.Windows.AppLifecycle;
 using PiPEverywhere.Models;
 using PiPEverywhere.Services;
@@ -18,6 +20,7 @@ public partial class App : Application
 
     public App()
     {
+        UnhandledException += OnUnhandledException;
         InitializeComponent();
 
         _singleInstanceMutex = new Mutex(
@@ -30,7 +33,8 @@ public partial class App : Application
         StartupService = new StartupService();
         Watcher = new PictureInPictureWatcher(
             new VirtualDesktopPinService(),
-            Settings.SelectedBrowserIds);
+            Settings.SelectedBrowserIds,
+            Settings.IsEnabled);
     }
 
     public static App Instance => (App)Current;
@@ -54,18 +58,28 @@ public partial class App : Application
             return;
         }
 
-        _window = new MainWindow();
-        CreateTrayIcon();
-        Watcher.Start();
-
         var activation = AppInstance.GetCurrent().GetActivatedEventArgs();
         var isBackgroundLaunch =
             activation.Kind == ExtendedActivationKind.StartupTask ||
             Environment.GetCommandLineArgs().Contains("--background", StringComparer.OrdinalIgnoreCase);
 
-        if (!isBackgroundLaunch)
+        try
         {
+            _window = new MainWindow();
             _window.Activate();
+
+            if (isBackgroundLaunch)
+            {
+                _window.Hide();
+            }
+
+            CreateTrayIcon();
+            Watcher.Start();
+        }
+        catch (Exception exception)
+        {
+            LogStartupException("OnLaunched", exception);
+            throw;
         }
     }
 
@@ -83,6 +97,16 @@ public partial class App : Application
     public void HideMainWindow()
     {
         _window?.Hide();
+    }
+
+    public void UpdateTrayStatus(bool isEnabled)
+    {
+        if (_trayIcon is not null)
+        {
+            _trayIcon.ToolTipText = isEnabled
+                ? "PiP Everywhere — running"
+                : "PiP Everywhere — off";
+        }
     }
 
     public void Quit()
@@ -110,14 +134,56 @@ public partial class App : Application
     private void CreateTrayIcon()
     {
         var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "AppIcon.ico");
+        var contextMenu = new MenuFlyout
+        {
+            AreOpenCloseAnimationsEnabled = false,
+        };
+        var quitMenuItem = new MenuFlyoutItem
+        {
+            Width = 100,
+            Text = "Quit",
+        };
+        quitMenuItem.Click += (_, _) => Quit();
+        contextMenu.Items.Add(quitMenuItem);
+
         _traySystemIcon = new Icon(iconPath);
         _trayIcon = new TaskbarIcon
         {
+            ContextMenuMode = ContextMenuMode.SecondWindow,
+            ContextFlyout = contextMenu,
             Icon = _traySystemIcon,
-            ToolTipText = "PiP Everywhere — watching for picture-in-picture windows",
+            ToolTipText = Settings.IsEnabled
+                ? "PiP Everywhere — running"
+                : "PiP Everywhere — off",
             LeftClickCommand = new ActionCommand(ShowMainWindow),
             NoLeftClickDelay = true,
+            Visibility = Visibility.Visible,
         };
         _trayIcon.ForceCreate();
+    }
+
+    private static void OnUnhandledException(
+        object sender,
+        Microsoft.UI.Xaml.UnhandledExceptionEventArgs args)
+    {
+        LogStartupException("UnhandledException", args.Exception);
+    }
+
+    private static void LogStartupException(string stage, Exception exception)
+    {
+        try
+        {
+            var logDirectory = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "PiPEverywhere");
+            Directory.CreateDirectory(logDirectory);
+            File.AppendAllText(
+                Path.Combine(logDirectory, "startup-error.log"),
+                $"[{DateTimeOffset.Now:O}] {stage}{Environment.NewLine}{exception}{Environment.NewLine}{Environment.NewLine}");
+        }
+        catch
+        {
+            // Logging must never replace the original startup exception.
+        }
     }
 }

@@ -15,8 +15,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="..\..\Models\AppSettings.cs" Link="Models\AppSettings.cs" />
     <Compile Include="..\..\Models\BrowserDefinition.cs" Link="Models\BrowserDefinition.cs" />
     <Compile Include="..\..\Services\BrowserCatalog.cs" Link="Services\BrowserCatalog.cs" />
+    <Compile Include="..\..\Services\NativeWindowService.cs" Link="Services\NativeWindowService.cs" />
+    <Compile Include="..\..\Services\PictureInPictureWatcher.cs" Link="Services\PictureInPictureWatcher.cs" />
+    <Compile Include="..\..\Services\VirtualDesktopPinService.cs" Link="Services\VirtualDesktopPinService.cs" />
   </ItemGroup>
 
   <ItemGroup>

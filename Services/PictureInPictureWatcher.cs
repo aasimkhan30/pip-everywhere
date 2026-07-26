@@ -9,17 +9,31 @@ public sealed class PictureInPictureWatcher : IDisposable
     private readonly Dictionary<nint, TrackedWindow> _trackedWindows = [];
     private readonly object _selectionLock = new();
     private HashSet<string> _selectedBrowserIds;
+    private bool _isEnabled;
     private Task? _watchTask;
 
     public PictureInPictureWatcher(
         VirtualDesktopPinService pinService,
-        IEnumerable<string> selectedBrowserIds)
+        IEnumerable<string> selectedBrowserIds,
+        bool isEnabled = true)
     {
         _pinService = pinService;
         _selectedBrowserIds = selectedBrowserIds.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        _isEnabled = isEnabled;
     }
 
     public event EventHandler<PictureInPicturePinnedEventArgs>? PictureInPicturePinned;
+
+    public bool IsEnabled
+    {
+        get
+        {
+            lock (_selectionLock)
+            {
+                return _isEnabled;
+            }
+        }
+    }
 
     public void Start()
     {
@@ -31,6 +45,14 @@ public sealed class PictureInPictureWatcher : IDisposable
         lock (_selectionLock)
         {
             _selectedBrowserIds = selectedBrowserIds.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        }
+    }
+
+    public void SetEnabled(bool isEnabled)
+    {
+        lock (_selectionLock)
+        {
+            _isEnabled = isEnabled;
         }
     }
 
@@ -57,6 +79,11 @@ public sealed class PictureInPictureWatcher : IDisposable
         HashSet<string> selected;
         lock (_selectionLock)
         {
+            if (!_isEnabled)
+            {
+                return;
+            }
+
             selected = new HashSet<string>(_selectedBrowserIds, StringComparer.OrdinalIgnoreCase);
         }
 

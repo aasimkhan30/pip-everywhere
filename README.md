@@ -8,10 +8,13 @@ without pinning the browser's normal windows.
 
 - Select Microsoft Edge, Google Chrome, Mozilla Firefox, Brave, Opera, or
   Vivaldi independently.
+- Pause and resume PiP watching from a persistent quick switch.
+- Filter the browser list and see which browsers are detected locally.
 - Automatically pin new PiP windows and unpin app-owned windows when a
   browser is deselected.
 - Start at sign-in through the Windows packaged startup-task API.
-- Continue quietly in the notification area when the window is closed.
+- Continue quietly in the notification area when the window is closed, with
+  a right-click **Quit** action.
 - Store settings locally; no browser extension or browsing permissions.
 - Package as x64 and ARM64 MSIX installers.
 
