@@ -66,6 +66,13 @@ Build the multi-architecture Store upload locally with:
 .\scripts\Build-StorePackage.ps1 -Version 0.0.5.0
 ```
 
+The package, Start menu, title bar, taskbar, tray, tile, and Store icon assets
+are generated from one drawing script:
+
+```powershell
+.\scripts\Generate-IconAssets.ps1
+```
+
 Every push to `main` tests the app, assigns a new increasing patch version,
 builds one `.msixupload` containing x64 and ARM64, and retains it as a workflow
 artifact. The first Store submission must be completed in Partner Center.
