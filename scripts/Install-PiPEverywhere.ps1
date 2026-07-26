@@ -34,8 +34,11 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 $dependencyPaths = @(
-    Get-ChildItem -LiteralPath (Join-Path $packageFolder 'Dependencies\x64') -Filter '*.msix' -ErrorAction SilentlyContinue
-    Get-ChildItem -LiteralPath (Join-Path $packageFolder 'Dependencies\win32') -Filter '*.msix' -ErrorAction SilentlyContinue
+    Get-ChildItem `
+        -LiteralPath (Join-Path $packageFolder 'Dependencies') `
+        -Filter '*.msix' `
+        -Recurse `
+        -ErrorAction SilentlyContinue
 ) | Select-Object -ExpandProperty FullName
 
 $installParameters = @{

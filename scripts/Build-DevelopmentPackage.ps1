@@ -1,14 +1,21 @@
 [CmdletBinding()]
 param(
-    [string]$Configuration = 'Release'
+    [string]$Configuration = 'Release',
+    [ValidateSet('x64', 'arm64')]
+    [string]$Architecture = 'x64',
+    [ValidatePattern('^\d+\.\d+\.\d+\.\d+$')]
+    [string]$Version = '0.0.1.0'
 )
 
 $ErrorActionPreference = 'Stop'
 
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $projectPath = Join-Path $repositoryRoot 'PiPEverywhere.csproj'
+$manifestPath = Join-Path $repositoryRoot 'Package.appxmanifest'
 $outputPath = Join-Path $repositoryRoot 'artifacts\msix'
 $publisher = 'CN=Aasim Khan'
+$platform = if ($Architecture -eq 'arm64') { 'ARM64' } else { 'x64' }
+$runtimeIdentifier = "win-$Architecture"
 
 $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
 if (-not (Test-Path -LiteralPath $vswhere)) {
@@ -31,19 +38,39 @@ if (-not $signTool) {
     throw 'SignTool.exe was not found. Install the Windows SDK signing tools.'
 }
 
-& $msbuild $projectPath `
-    /restore `
-    "/p:Configuration=$Configuration" `
-    /p:Platform=x64 `
-    /p:RuntimeIdentifier=win-x64 `
-    /p:GenerateAppxPackageOnBuild=true `
-    /p:AppxBundle=Never `
-    /p:AppxPackageSigningEnabled=false `
-    "/p:AppxPackageDir=$outputPath\" `
-    /verbosity:minimal
+$originalManifestBytes = [System.IO.File]::ReadAllBytes($manifestPath)
+$originalManifest = [System.Text.Encoding]::UTF8.GetString($originalManifestBytes).TrimStart([char]0xFEFF)
+$versionedManifest = [regex]::Replace(
+    $originalManifest,
+    '(<Identity\b[\s\S]*?\bVersion=")[^"]+(")',
+    { param($match) $match.Groups[1].Value + $Version + $match.Groups[2].Value },
+    1
+)
 
-if ($LASTEXITCODE -ne 0) {
-    throw "MSIX build failed with exit code $LASTEXITCODE."
+try {
+    [System.IO.File]::WriteAllText(
+        $manifestPath,
+        $versionedManifest,
+        [System.Text.UTF8Encoding]::new($true)
+    )
+
+    & $msbuild $projectPath `
+        /restore `
+        "/p:Configuration=$Configuration" `
+        "/p:Platform=$platform" `
+        "/p:RuntimeIdentifier=$runtimeIdentifier" `
+        /p:GenerateAppxPackageOnBuild=true `
+        /p:AppxBundle=Never `
+        /p:AppxPackageSigningEnabled=false `
+        "/p:AppxPackageDir=$outputPath\" `
+        /verbosity:minimal
+
+    if ($LASTEXITCODE -ne 0) {
+        throw "MSIX build failed with exit code $LASTEXITCODE."
+    }
+}
+finally {
+    [System.IO.File]::WriteAllBytes($manifestPath, $originalManifestBytes)
 }
 
 $certificate = Get-ChildItem Cert:\CurrentUser\My |
@@ -67,7 +94,7 @@ if (-not $certificate) {
 }
 
 $packageFolder = Get-ChildItem -LiteralPath $outputPath -Directory |
-    Where-Object Name -Like 'PiPEverywhere_*_x64_Test' |
+    Where-Object Name -Like "PiPEverywhere_*_${Architecture}_Test" |
     Sort-Object LastWriteTime -Descending |
     Select-Object -First 1
 
@@ -96,7 +123,7 @@ Copy-Item `
     -Destination (Join-Path $packageFolder.FullName 'Install-PiPEverywhere.ps1') `
     -Force
 
-$releaseFolder = Join-Path $outputPath 'PiPEverywhere-x64-Development'
+$releaseFolder = Join-Path $outputPath "PiPEverywhere-$Architecture"
 if (Test-Path -LiteralPath $releaseFolder) {
     Remove-Item -LiteralPath $releaseFolder -Recurse -Force
 }
@@ -111,19 +138,15 @@ Copy-Item `
     -LiteralPath (Join-Path $repositoryRoot 'README.md') `
     -Destination $releaseFolder
 
-$releaseDependencies = Join-Path $releaseFolder 'Dependencies'
-New-Item -ItemType Directory -Path $releaseDependencies | Out-Null
-foreach ($architecture in @('x64', 'win32')) {
-    $source = Join-Path $packageFolder.FullName "Dependencies\$architecture"
-    if (Test-Path -LiteralPath $source) {
-        Copy-Item `
-            -LiteralPath $source `
-            -Destination (Join-Path $releaseDependencies $architecture) `
-            -Recurse
-    }
+$dependencySource = Join-Path $packageFolder.FullName 'Dependencies'
+if (Test-Path -LiteralPath $dependencySource) {
+    Copy-Item `
+        -LiteralPath $dependencySource `
+        -Destination (Join-Path $releaseFolder 'Dependencies') `
+        -Recurse
 }
 
-$releaseArchive = Join-Path $outputPath 'PiPEverywhere-x64-Development.zip'
+$releaseArchive = Join-Path $outputPath "PiPEverywhere-$Architecture-$($Version.Substring(0, $Version.LastIndexOf('.'))).zip"
 Compress-Archive -Path (Join-Path $releaseFolder '*') -DestinationPath $releaseArchive -Force
 
 Write-Host ''
