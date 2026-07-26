@@ -49,10 +49,11 @@ certificate. Open the resulting folder under `artifacts\msix`, right-click
 `Install-PiPEverywhere.ps1`, and choose **Run with PowerShell**. Windows asks
 for administrator approval once so it can trust that development certificate.
 
-Development certificates are suitable only for local testing. Public
-installation, signing, and updates are handled by the Microsoft Store.
+The GitHub installer uses the project's persistent self-signed certificate, so
+GitHub users must trust that certificate once. Microsoft Store installations
+are signed and updated through the Store without that manual trust step.
 
-## Microsoft Store releases
+## Releases
 
 PiP Everywhere's Store product ID is `9N9S061H2Z1S`. The Store identity is:
 
@@ -63,7 +64,7 @@ PiP Everywhere's Store product ID is `9N9S061H2Z1S`. The Store identity is:
 Build the multi-architecture Store upload locally with:
 
 ```powershell
-.\scripts\Build-StorePackage.ps1 -Version 0.0.5.0
+.\scripts\Build-StorePackage.ps1 -Version 0.0.7.0
 ```
 
 The package, Start menu, title bar, taskbar, tray, tile, and Store icon assets
@@ -73,14 +74,18 @@ are generated from one drawing script:
 .\scripts\Generate-IconAssets.ps1
 ```
 
-Every push to `main` tests the app, assigns a new increasing patch version,
-builds one `.msixupload` containing x64 and ARM64, and retains it as a workflow
-artifact. The first Store submission must be completed in Partner Center.
-After that version is live and the repository variable
-`STORE_PUBLISHING_ENABLED` is `true`, the same workflow submits validated
-updates automatically and tags each accepted commit. Submission requires the
-Partner Center credentials documented in the workflow to be stored as GitHub
-environment secrets.
+Every push to `main` uses one synchronized version for two channels:
+
+- GitHub Releases publish signed x64 and ARM64 installers with App Installer
+  automatic-update feeds.
+- Microsoft Store builds publish one `.msixupload` containing x64 and ARM64 as
+  a workflow artifact.
+
+The first Store submission must be completed in Partner Center. After that
+version is live and the repository variable `STORE_PUBLISHING_ENABLED` is
+`true`, the Store workflow submits validated updates automatically. Submission
+requires the Partner Center credentials documented in the workflow to be stored
+as GitHub environment secrets.
 
 ## Privacy
 

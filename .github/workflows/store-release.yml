@@ -37,27 +37,13 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
-      - name: Determine next version
+      - name: Determine release version
         id: version
         shell: pwsh
         run: |
-          $patches = git tag --list 'v0.0.*' |
-            ForEach-Object {
-              if ($_ -match '^v0\.0\.(\d+)$') {
-                [int]$Matches[1]
-              }
-            }
-          $patch = if ($patches) {
-            ($patches | Measure-Object -Maximum).Maximum + 1
-          } else {
-            1
-          }
-          # Keep versions increasing even before the first Store submission
-          # creates a release tag.
-          $runPatch = 4 + [int]$env:GITHUB_RUN_NUMBER
-          $patch = [Math]::Max($patch, $runPatch)
-          "release=0.0.$patch" >> $env:GITHUB_OUTPUT
-          "package=0.0.$patch.0" >> $env:GITHUB_OUTPUT
+          $version = .\scripts\Get-ReleaseVersion.ps1
+          "release=$($version.Release)" >> $env:GITHUB_OUTPUT
+          "package=$($version.Package)" >> $env:GITHUB_OUTPUT
 
       - name: Test
         run: dotnet test .\tests\PiPEverywhere.Tests\PiPEverywhere.Tests.csproj -c Release
@@ -135,5 +121,15 @@ jobs:
           RELEASE_VERSION: ${{ needs.build.outputs.release_version }}
         shell: pwsh
         run: |
-          git tag "v$env:RELEASE_VERSION" "$env:GITHUB_SHA"
-          git push origin "v$env:RELEASE_VERSION"
+          $tag = "v$env:RELEASE_VERSION"
+          $existingCommit = git rev-list -n 1 $tag 2>$null
+          if ($existingCommit) {
+            if ($existingCommit -ne $env:GITHUB_SHA) {
+              throw "$tag already points to a different commit."
+            }
+            Write-Host "$tag already identifies this commit."
+          }
+          else {
+            git tag $tag "$env:GITHUB_SHA"
+            git push origin $tag
+          }

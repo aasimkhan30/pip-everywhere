@@ -1,0 +1,113 @@
+name: github-release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: github-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Determine release version
+        id: version
+        shell: pwsh
+        run: |
+          $version = .\scripts\Get-ReleaseVersion.ps1
+          "release=$($version.Release)" >> $env:GITHUB_OUTPUT
+          "package=$($version.Package)" >> $env:GITHUB_OUTPUT
+
+      - name: Test
+        run: dotnet test .\tests\PiPEverywhere.Tests\PiPEverywhere.Tests.csproj -c Release
+
+      - name: Import persistent GitHub signing certificate
+        env:
+          SIGNING_PFX_BASE64: ${{ secrets.SIGNING_PFX_BASE64 }}
+          SIGNING_PFX_PASSWORD: ${{ secrets.SIGNING_PFX_PASSWORD }}
+        shell: pwsh
+        run: |
+          if (-not $env:SIGNING_PFX_BASE64 -or -not $env:SIGNING_PFX_PASSWORD) {
+            throw 'The persistent GitHub signing certificate secrets are not configured.'
+          }
+
+          $pfxPath = Join-Path $env:RUNNER_TEMP 'PiPEverywhere-signing.pfx'
+          [System.IO.File]::WriteAllBytes(
+            $pfxPath,
+            [Convert]::FromBase64String($env:SIGNING_PFX_BASE64)
+          )
+          $password = ConvertTo-SecureString $env:SIGNING_PFX_PASSWORD -AsPlainText -Force
+          $certificate = Import-PfxCertificate `
+            -FilePath $pfxPath `
+            -CertStoreLocation Cert:\CurrentUser\My `
+            -Password $password `
+            -Exportable
+
+          if ($certificate.Subject -ne 'CN=Aasim Khan') {
+            throw "Unexpected GitHub signing certificate subject: $($certificate.Subject)"
+          }
+          if ($certificate.NotAfter -le (Get-Date).AddMonths(6)) {
+            throw "The GitHub signing certificate expires too soon: $($certificate.NotAfter)"
+          }
+
+      - name: Build x64 GitHub installer
+        shell: pwsh
+        run: >
+          .\scripts\Build-DevelopmentPackage.ps1
+          -Architecture x64
+          -Version '${{ steps.version.outputs.package }}'
+          -PackageName 'PiPEverywhere'
+          -Publisher 'CN=Aasim Khan'
+          -RequireExistingCertificate
+
+      - name: Build ARM64 GitHub installer
+        shell: pwsh
+        run: >
+          .\scripts\Build-DevelopmentPackage.ps1
+          -Architecture arm64
+          -Version '${{ steps.version.outputs.package }}'
+          -PackageName 'PiPEverywhere'
+          -Publisher 'CN=Aasim Khan'
+          -RequireExistingCertificate
+
+      - name: Prepare GitHub update feeds
+        shell: pwsh
+        run: >
+          .\scripts\Prepare-ReleaseArtifacts.ps1
+          -Version '${{ steps.version.outputs.package }}'
+          -Repository '${{ github.repository }}'
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ steps.version.outputs.release }}
+        shell: pwsh
+        run: |
+          gh release create "v$env:RELEASE_VERSION" `
+            .\artifacts\msix\PiPEverywhere-x64-$env:RELEASE_VERSION.zip `
+            .\artifacts\msix\PiPEverywhere-arm64-$env:RELEASE_VERSION.zip `
+            .\artifacts\msix\release\PiPEverywhere-x64.msix `
+            .\artifacts\msix\release\PiPEverywhere-arm64.msix `
+            .\artifacts\msix\release\Microsoft.WindowsAppRuntime.2-x64.msix `
+            .\artifacts\msix\release\Microsoft.WindowsAppRuntime.2-arm64.msix `
+            .\artifacts\msix\release\PiPEverywhere-x64.appinstaller `
+            .\artifacts\msix\release\PiPEverywhere-arm64.appinstaller `
+            .\artifacts\msix\release\PiPEverywhere.cer `
+            --target "$env:GITHUB_SHA" `
+            --title "PiP Everywhere $env:RELEASE_VERSION" `
+            --generate-notes

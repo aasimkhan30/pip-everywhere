@@ -5,6 +5,8 @@ param(
     [string]$Architecture = 'x64',
     [ValidatePattern('^\d+\.\d+\.\d+\.\d+$')]
     [string]$Version = '0.0.1.0',
+    [string]$PackageName,
+    [string]$Publisher,
     [switch]$RequireExistingCertificate
 )
 
@@ -15,14 +17,19 @@ $projectPath = Join-Path $repositoryRoot 'PiPEverywhere.csproj'
 $manifestPath = Join-Path $repositoryRoot 'Package.appxmanifest'
 $outputPath = Join-Path $repositoryRoot 'artifacts\msix'
 $manifestText = [System.IO.File]::ReadAllText($manifestPath)
-$publisherMatch = [regex]::Match(
+$identityMatch = [regex]::Match(
     $manifestText,
-    '<Identity\b[\s\S]*?\bPublisher="([^"]+)"'
+    '<Identity\b[\s\S]*?\bName="([^"]+)"[\s\S]*?\bPublisher="([^"]+)"'
 )
-if (-not $publisherMatch.Success) {
-    throw 'The package publisher was not found in Package.appxmanifest.'
+if (-not $identityMatch.Success) {
+    throw 'The package identity was not found in Package.appxmanifest.'
 }
-$publisher = $publisherMatch.Groups[1].Value
+if (-not $PackageName) {
+    $PackageName = $identityMatch.Groups[1].Value
+}
+if (-not $Publisher) {
+    $Publisher = $identityMatch.Groups[2].Value
+}
 $platform = if ($Architecture -eq 'arm64') { 'ARM64' } else { 'x64' }
 $runtimeIdentifier = "win-$Architecture"
 
@@ -51,6 +58,18 @@ $originalManifestBytes = [System.IO.File]::ReadAllBytes($manifestPath)
 $originalManifest = [System.Text.Encoding]::UTF8.GetString($originalManifestBytes).TrimStart([char]0xFEFF)
 $versionedManifest = [regex]::Replace(
     $originalManifest,
+    '(<Identity\b[\s\S]*?\bName=")[^"]+(")',
+    { param($match) $match.Groups[1].Value + $PackageName + $match.Groups[2].Value },
+    1
+)
+$versionedManifest = [regex]::Replace(
+    $versionedManifest,
+    '(<Identity\b[\s\S]*?\bPublisher=")[^"]+(")',
+    { param($match) $match.Groups[1].Value + $Publisher + $match.Groups[2].Value },
+    1
+)
+$versionedManifest = [regex]::Replace(
+    $versionedManifest,
     '(<Identity\b[\s\S]*?\bVersion=")[^"]+(")',
     { param($match) $match.Groups[1].Value + $Version + $match.Groups[2].Value },
     1
@@ -84,7 +103,7 @@ finally {
 
 $certificate = Get-ChildItem Cert:\CurrentUser\My |
     Where-Object {
-        $_.Subject -eq $publisher -and
+        $_.Subject -eq $Publisher -and
         $_.HasPrivateKey -and
         $_.EnhancedKeyUsageList.ObjectId -contains '1.3.6.1.5.5.7.3.3' -and
         $_.NotAfter -gt (Get-Date).AddMonths(6)
@@ -102,7 +121,7 @@ Import the persistent PFX into Cert:\CurrentUser\My before building a release.
 
     $certificate = New-SelfSignedCertificate `
         -Type CodeSigningCert `
-        -Subject $publisher `
+        -Subject $Publisher `
         -FriendlyName 'PiP Everywhere Development Signing' `
         -CertStoreLocation Cert:\CurrentUser\My `
         -HashAlgorithm SHA256 `
