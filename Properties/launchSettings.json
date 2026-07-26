@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "PiPEverywhere (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "PiPEverywhere (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

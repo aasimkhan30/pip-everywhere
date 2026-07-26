@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/tests/">
+    <Project Path="tests/PiPEverywhere.Tests/PiPEverywhere.Tests.csproj" />
+  </Folder>
+  <Project Path="PiPEverywhere.csproj" />
+</Solution>
