@@ -33,4 +33,5 @@ compatibility updates after major Windows releases.
 
 ## License
 
-MIT. See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+[Privacy](PRIVACY.md) · MIT. See
+[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
