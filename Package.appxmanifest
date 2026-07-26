@@ -9,8 +9,8 @@
   IgnorableNamespaces="uap desktop rescap">
 
   <Identity
-    Name="PiPEverywhere"
-    Publisher="CN=Aasim Khan"
+    Name="AasimKhan.PiPEverywhere"
+    Publisher="CN=8D93E30E-E8CA-4DBD-9FAA-C280229BB5D5"
     Version="1.0.0.0" />
 
   <mp:PhoneIdentity PhoneProductId="684E15C5-EDD2-46C9-9445-75C20C11BD6B" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>

@@ -1,0 +1,139 @@
+name: store-release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Submit this build to the Microsoft Store
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: store-release
+  cancel-in-progress: false
+
+env:
+  STORE_PRODUCT_ID: 9N9S061H2Z1S
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    outputs:
+      release_version: ${{ steps.version.outputs.release }}
+      package_version: ${{ steps.version.outputs.package }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Determine next version
+        id: version
+        shell: pwsh
+        run: |
+          $patches = git tag --list 'v0.0.*' |
+            ForEach-Object {
+              if ($_ -match '^v0\.0\.(\d+)$') {
+                [int]$Matches[1]
+              }
+            }
+          $patch = if ($patches) {
+            ($patches | Measure-Object -Maximum).Maximum + 1
+          } else {
+            1
+          }
+          # Keep versions increasing even before the first Store submission
+          # creates a release tag.
+          $runPatch = 4 + [int]$env:GITHUB_RUN_NUMBER
+          $patch = [Math]::Max($patch, $runPatch)
+          "release=0.0.$patch" >> $env:GITHUB_OUTPUT
+          "package=0.0.$patch.0" >> $env:GITHUB_OUTPUT
+
+      - name: Test
+        run: dotnet test .\tests\PiPEverywhere.Tests\PiPEverywhere.Tests.csproj -c Release
+
+      - name: Build x64 and ARM64 Store upload
+        shell: pwsh
+        run: >
+          .\scripts\Build-StorePackage.ps1
+          -Version '${{ steps.version.outputs.package }}'
+
+      - name: Upload validated Store package
+        uses: actions/upload-artifact@v4
+        with:
+          name: PiPEverywhere-Store-${{ steps.version.outputs.release }}
+          path: artifacts/store/*.msixupload
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    if: vars.STORE_PUBLISHING_ENABLED == 'true' || inputs.publish == true
+    runs-on: windows-latest
+    environment: microsoft-store
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download validated Store package
+        uses: actions/download-artifact@v4
+        with:
+          name: PiPEverywhere-Store-${{ needs.build.outputs.release_version }}
+          path: artifacts/store
+
+      - name: Set up Microsoft Store Developer CLI
+        uses: microsoft/microsoft-store-apppublisher@v1.1
+
+      - name: Configure Partner Center authentication
+        shell: pwsh
+        env:
+          PARTNER_CENTER_TENANT_ID: ${{ secrets.PARTNER_CENTER_TENANT_ID }}
+          PARTNER_CENTER_SELLER_ID: ${{ secrets.PARTNER_CENTER_SELLER_ID }}
+          PARTNER_CENTER_CLIENT_ID: ${{ secrets.PARTNER_CENTER_CLIENT_ID }}
+          PARTNER_CENTER_CLIENT_SECRET: ${{ secrets.PARTNER_CENTER_CLIENT_SECRET }}
+        run: |
+          $required = @(
+            'PARTNER_CENTER_TENANT_ID',
+            'PARTNER_CENTER_SELLER_ID',
+            'PARTNER_CENTER_CLIENT_ID',
+            'PARTNER_CENTER_CLIENT_SECRET'
+          )
+          foreach ($name in $required) {
+            if (-not (Get-Item "env:$name").Value) {
+              throw "The $name secret is not configured."
+            }
+          }
+
+          msstore reconfigure `
+            --tenantId $env:PARTNER_CENTER_TENANT_ID `
+            --sellerId $env:PARTNER_CENTER_SELLER_ID `
+            --clientId $env:PARTNER_CENTER_CLIENT_ID `
+            --clientSecret $env:PARTNER_CENTER_CLIENT_SECRET
+
+      - name: Submit to Microsoft Store
+        shell: pwsh
+        run: |
+          $package = Get-ChildItem artifacts\store -Filter *.msixupload |
+            Select-Object -First 1
+          if (-not $package) {
+            throw 'The Store upload package was not downloaded.'
+          }
+          msstore publish $package.FullName -id $env:STORE_PRODUCT_ID
+
+      - name: Tag accepted Store submission
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ needs.build.outputs.release_version }}
+        shell: pwsh
+        run: |
+          git tag "v$env:RELEASE_VERSION" "$env:GITHUB_SHA"
+          git push origin "v$env:RELEASE_VERSION"

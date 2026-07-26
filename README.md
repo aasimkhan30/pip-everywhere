@@ -16,7 +16,7 @@ without pinning the browser's normal windows.
 - Continue quietly in the notification area when the window is closed, with
   a right-click **Quit** action.
 - Store settings locally; no browser extension or browsing permissions.
-- Package as x64 and ARM64 MSIX installers.
+- Publish one Microsoft Store package supporting x64 and ARM64.
 
 ## Requirements
 
@@ -49,24 +49,31 @@ certificate. Open the resulting folder under `artifacts\msix`, right-click
 `Install-PiPEverywhere.ps1`, and choose **Run with PowerShell**. Windows asks
 for administrator approval once so it can trust that development certificate.
 
-Development certificates are suitable for personal testing. For public
-distribution, use the Microsoft Store (Microsoft signs MSIX submissions) or
-replace the development certificate with a trusted code-signing service.
+Development certificates are suitable only for local testing. Public
+installation, signing, and updates are handled by the Microsoft Store.
 
-## Releases
+## Microsoft Store releases
 
-Every successful build from `main` creates a GitHub release with x64 and ARM64
-installer archives. Releases begin at `0.0.1` and automatically increment the
-patch number (`0.0.2`, `0.0.3`, and so on).
+PiP Everywhere's Store product ID is `9N9S061H2Z1S`. The Store identity is:
 
-Release packages use one persistent self-signed certificate stored as encrypted
-GitHub Actions secrets. Install through the architecture-specific ZIP once:
-the included script trusts that certificate and registers the `.appinstaller`
-feed. Windows then checks for updates whenever PiP Everywhere starts and
-periodically in the background.
+- Package name: `AasimKhan.PiPEverywhere`
+- Publisher: `CN=8D93E30E-E8CA-4DBD-9FAA-C280229BB5D5`
+- Publisher display name: `Aasim Khan`
 
-People upgrading from `0.0.3` or earlier must run the installer once because
-those packages were not associated with an App Installer update feed.
+Build the multi-architecture Store upload locally with:
+
+```powershell
+.\scripts\Build-StorePackage.ps1 -Version 0.0.5.0
+```
+
+Every push to `main` tests the app, assigns a new increasing patch version,
+builds one `.msixupload` containing x64 and ARM64, and retains it as a workflow
+artifact. The first Store submission must be completed in Partner Center.
+After that version is live and the repository variable
+`STORE_PUBLISHING_ENABLED` is `true`, the same workflow submits validated
+updates automatically and tags each accepted commit. Submission requires the
+Partner Center credentials documented in the workflow to be stored as GitHub
+environment secrets.
 
 ## Privacy
 

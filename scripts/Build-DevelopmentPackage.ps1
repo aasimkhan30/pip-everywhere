@@ -14,7 +14,15 @@ $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $projectPath = Join-Path $repositoryRoot 'PiPEverywhere.csproj'
 $manifestPath = Join-Path $repositoryRoot 'Package.appxmanifest'
 $outputPath = Join-Path $repositoryRoot 'artifacts\msix'
-$publisher = 'CN=Aasim Khan'
+$manifestText = [System.IO.File]::ReadAllText($manifestPath)
+$publisherMatch = [regex]::Match(
+    $manifestText,
+    '<Identity\b[\s\S]*?\bPublisher="([^"]+)"'
+)
+if (-not $publisherMatch.Success) {
+    throw 'The package publisher was not found in Package.appxmanifest.'
+}
+$publisher = $publisherMatch.Groups[1].Value
 $platform = if ($Architecture -eq 'arm64') { 'ARM64' } else { 'x64' }
 $runtimeIdentifier = "win-$Architecture"
 
