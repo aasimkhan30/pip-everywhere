@@ -4,7 +4,8 @@ param(
     [ValidateSet('x64', 'arm64')]
     [string]$Architecture = 'x64',
     [ValidatePattern('^\d+\.\d+\.\d+\.\d+$')]
-    [string]$Version = '0.0.1.0'
+    [string]$Version = '0.0.1.0',
+    [switch]$RequireExistingCertificate
 )
 
 $ErrorActionPreference = 'Stop'
@@ -84,6 +85,13 @@ $certificate = Get-ChildItem Cert:\CurrentUser\My |
     Select-Object -First 1
 
 if (-not $certificate) {
+    if ($RequireExistingCertificate) {
+        throw @"
+No reusable PiP Everywhere signing certificate was found.
+Import the persistent PFX into Cert:\CurrentUser\My before building a release.
+"@
+    }
+
     $certificate = New-SelfSignedCertificate `
         -Type CodeSigningCert `
         -Subject $publisher `
@@ -110,12 +118,18 @@ if (-not $package) {
     throw 'The generated MSIX package was not found.'
 }
 
-$publicCertificate = Join-Path $packageFolder.FullName 'PiPEverywhere-development.cer'
+$publicCertificate = Join-Path $packageFolder.FullName 'PiPEverywhere.cer'
 Export-Certificate -Cert $certificate -FilePath $publicCertificate -Force | Out-Null
 
 & $signTool sign /fd SHA256 /sha1 $certificate.Thumbprint $package.FullName
 if ($LASTEXITCODE -ne 0) {
     throw "Package signing failed with exit code $LASTEXITCODE."
+}
+
+$signature = Get-AuthenticodeSignature -LiteralPath $package.FullName
+if (-not $signature.SignerCertificate -or
+    $signature.SignerCertificate.Thumbprint -ne $certificate.Thumbprint) {
+    throw 'The package signature does not match the selected signing certificate.'
 }
 
 Copy-Item `

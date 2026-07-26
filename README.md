@@ -59,6 +59,15 @@ Every successful build from `main` creates a GitHub release with x64 and ARM64
 installer archives. Releases begin at `0.0.1` and automatically increment the
 patch number (`0.0.2`, `0.0.3`, and so on).
 
+Release packages use one persistent self-signed certificate stored as encrypted
+GitHub Actions secrets. Install through the architecture-specific ZIP once:
+the included script trusts that certificate and registers the `.appinstaller`
+feed. Windows then checks for updates whenever PiP Everywhere starts and
+periodically in the background.
+
+People upgrading from `0.0.3` or earlier must run the installer once because
+those packages were not associated with an App Installer update feed.
+
 ## Privacy
 
 The watcher enumerates top-level windows and compares only:
