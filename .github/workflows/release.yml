@@ -25,6 +25,21 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
+      - name: Verify Native AOT toolchain
+        shell: pwsh
+        run: |
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+          $visualStudioPath = & $vswhere -latest -products * -property installationPath
+          $toolRoot = Join-Path $visualStudioPath 'VC\Tools\MSVC'
+          foreach ($architecture in @('x64', 'arm64')) {
+            $linker = Get-ChildItem $toolRoot -Filter link.exe -Recurse |
+              Where-Object FullName -Match "\\Hostx64\\$architecture\\link\.exe$" |
+              Select-Object -First 1
+            if (-not $linker) {
+              throw "The $architecture C++ linker required by Native AOT is not installed."
+            }
+          }
+
       - name: Determine release version
         id: version
         shell: pwsh

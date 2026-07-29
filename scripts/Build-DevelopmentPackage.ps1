@@ -181,10 +181,18 @@ Copy-Item `
 
 $dependencySource = Join-Path $packageFolder.FullName 'Dependencies'
 if (Test-Path -LiteralPath $dependencySource) {
+    $architectureDependency = Join-Path `
+        $dependencySource `
+        "$Architecture\Microsoft.WindowsAppRuntime.2.msix"
+    if (-not (Test-Path -LiteralPath $architectureDependency)) {
+        throw "The $Architecture Windows App Runtime dependency was not found."
+    }
+
+    $dependencyDestination = Join-Path $releaseFolder "Dependencies\$Architecture"
+    New-Item -ItemType Directory -Path $dependencyDestination | Out-Null
     Copy-Item `
-        -LiteralPath $dependencySource `
-        -Destination (Join-Path $releaseFolder 'Dependencies') `
-        -Recurse
+        -LiteralPath $architectureDependency `
+        -Destination $dependencyDestination
 }
 
 $releaseArchive = Join-Path $outputPath "PiPEverywhere-$Architecture-$($Version.Substring(0, $Version.LastIndexOf('.'))).zip"

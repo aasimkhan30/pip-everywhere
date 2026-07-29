@@ -64,8 +64,18 @@
   <ItemGroup>
     <PackageReference Include="H.NotifyIcon.WinUI" Version="2.4.1" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2526" />
-    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.3.1" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.Foundation" Version="2.3.5" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.InteractiveExperiences" Version="2.1.3" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.Runtime" Version="2.3.1" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.WinUI" Version="2.3.0" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools.WinApp" Version="0.5.0" />
+    <!--
+      H.NotifyIcon references the complete Windows App SDK metapackage, which also
+      pulls AI/ML features into this small utility. Keep only the components used
+      by the app, and omit WebView2 because the UI contains no WebView controls.
+    -->
+    <PrunePackageReference Include="Microsoft.WindowsAppSDK" Version="2.3.1" />
+    <PrunePackageReference Include="Microsoft.Web.WebView2" Version="1.0.3719.77" />
   </ItemGroup>
 
   <!--
@@ -78,8 +88,17 @@
   </PropertyGroup>
 
   <!-- Publish Properties -->
-  <PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
     <PublishReadyToRun>False</PublishReadyToRun>
-    <PublishTrimmed>False</PublishTrimmed>
+    <PublishTrimmed>True</PublishTrimmed>
+    <SelfContained>True</SelfContained>
+    <PublishAot>True</PublishAot>
+    <OptimizationPreference>Size</OptimizationPreference>
+    <DebuggerSupport>False</DebuggerSupport>
+    <EventSourceSupport>False</EventSourceSupport>
+    <MetricsSupport>False</MetricsSupport>
+    <StackTraceSupport>False</StackTraceSupport>
+    <UseSystemResourceKeys>True</UseSystemResourceKeys>
+    <WarningsAsErrors>$(WarningsAsErrors);IL2026;IL3050;IL3053</WarningsAsErrors>
   </PropertyGroup>
 </Project>

@@ -5,20 +5,24 @@ on:
     branches: [main]
   workflow_dispatch:
     inputs:
+      version:
+        description: Release version, for example 0.0.9 (blank uses the next patch)
+        type: string
+        required: false
       publish:
         description: Submit this build to the Microsoft Store
         type: boolean
         default: false
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: store-release
   cancel-in-progress: false
 
 env:
-  STORE_PRODUCT_ID: 9N9S061H2Z1S
+  STORE_PRODUCT_ID: ${{ vars.STORE_PRODUCT_ID }}
 
 jobs:
   build:
@@ -37,13 +41,38 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
+      - name: Verify Native AOT toolchain
+        shell: pwsh
+        run: |
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+          $visualStudioPath = & $vswhere -latest -products * -property installationPath
+          $toolRoot = Join-Path $visualStudioPath 'VC\Tools\MSVC'
+          foreach ($architecture in @('x64', 'arm64')) {
+            $linker = Get-ChildItem $toolRoot -Filter link.exe -Recurse |
+              Where-Object FullName -Match "\\Hostx64\\$architecture\\link\.exe$" |
+              Select-Object -First 1
+            if (-not $linker) {
+              throw "The $architecture C++ linker required by Native AOT is not installed."
+            }
+          }
+
       - name: Determine release version
         id: version
         shell: pwsh
         run: |
-          $version = .\scripts\Get-ReleaseVersion.ps1
-          "release=$($version.Release)" >> $env:GITHUB_OUTPUT
-          "package=$($version.Package)" >> $env:GITHUB_OUTPUT
+          $requestedVersion = '${{ inputs.version }}'.Trim()
+          if ($requestedVersion) {
+            if ($requestedVersion -notmatch '^\d+\.\d+\.\d+$') {
+              throw 'The requested version must use the format 0.0.9.'
+            }
+            "release=$requestedVersion" >> $env:GITHUB_OUTPUT
+            "package=$requestedVersion.0" >> $env:GITHUB_OUTPUT
+          }
+          else {
+            $version = .\scripts\Get-ReleaseVersion.ps1
+            "release=$($version.Release)" >> $env:GITHUB_OUTPUT
+            "package=$($version.Package)" >> $env:GITHUB_OUTPUT
+          }
 
       - name: Test
         run: dotnet test .\tests\PiPEverywhere.Tests\PiPEverywhere.Tests.csproj -c Release
@@ -60,10 +89,13 @@ jobs:
           name: PiPEverywhere-Store-${{ steps.version.outputs.release }}
           path: artifacts/store/*.msixupload
           if-no-files-found: error
+          retention-days: 14
 
   publish:
     needs: build
-    if: vars.STORE_PUBLISHING_ENABLED == 'true' || inputs.publish == true
+    if: >-
+      (github.event_name == 'push' && vars.STORE_PUBLISHING_ENABLED == 'true') ||
+      (github.event_name == 'workflow_dispatch' && inputs.publish == true)
     runs-on: windows-latest
     environment: microsoft-store
 
@@ -87,6 +119,10 @@ jobs:
           PARTNER_CENTER_CLIENT_ID: ${{ secrets.PARTNER_CENTER_CLIENT_ID }}
           PARTNER_CENTER_CLIENT_SECRET: ${{ secrets.PARTNER_CENTER_CLIENT_SECRET }}
         run: |
+          if (-not $env:STORE_PRODUCT_ID) {
+            throw 'The STORE_PRODUCT_ID repository variable is not configured.'
+          }
+
           $required = @(
             'PARTNER_CENTER_TENANT_ID',
             'PARTNER_CENTER_SELLER_ID',
@@ -105,6 +141,10 @@ jobs:
             --clientId $env:PARTNER_CENTER_CLIENT_ID `
             --clientSecret $env:PARTNER_CENTER_CLIENT_SECRET
 
+      - name: Verify Partner Center access
+        shell: pwsh
+        run: msstore apps get $env:STORE_PRODUCT_ID
+
       - name: Submit to Microsoft Store
         shell: pwsh
         run: |
@@ -113,23 +153,16 @@ jobs:
           if (-not $package) {
             throw 'The Store upload package was not downloaded.'
           }
-          msstore publish $package.FullName -id $env:STORE_PRODUCT_ID
+          msstore publish `
+            $package.DirectoryName `
+            --inputFile $package.FullName `
+            --appId $env:STORE_PRODUCT_ID
 
-      - name: Tag accepted Store submission
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_VERSION: ${{ needs.build.outputs.release_version }}
+      - name: Record submission status
         shell: pwsh
         run: |
-          $tag = "v$env:RELEASE_VERSION"
-          $existingCommit = git rev-list -n 1 $tag 2>$null
-          if ($existingCommit) {
-            if ($existingCommit -ne $env:GITHUB_SHA) {
-              throw "$tag already points to a different commit."
-            }
-            Write-Host "$tag already identifies this commit."
-          }
-          else {
-            git tag $tag "$env:GITHUB_SHA"
-            git push origin $tag
-          }
+          "## Microsoft Store submission" >> $env:GITHUB_STEP_SUMMARY
+          'The package was uploaded and submitted for Microsoft certification.' >> $env:GITHUB_STEP_SUMMARY
+          'Certification and rollout continue asynchronously in Partner Center.' >> $env:GITHUB_STEP_SUMMARY
+          msstore submission status $env:STORE_PRODUCT_ID |
+            Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
