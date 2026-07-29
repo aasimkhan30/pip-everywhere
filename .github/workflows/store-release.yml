@@ -154,8 +154,8 @@ jobs:
             throw 'The Store upload package was not downloaded.'
           }
           msstore publish `
-            $package.DirectoryName `
-            --inputFile $package.FullName `
+            . `
+            --inputDirectory $package.DirectoryName `
             --appId $env:STORE_PRODUCT_ID
 
       - name: Record submission status
